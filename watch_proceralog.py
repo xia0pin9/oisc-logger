@@ -1,13 +1,13 @@
 import re
-from log_parser import parse_ts
+from log_parser import parse_procera
 from log_watcher import LogWatcher
 from pymongo import MongoClient
 
 
-# Config info for truesight logger
+# Config info for procera (xp) logger
 mongodb_url = "mongodb://localhost:27017"
-logfile = "/data/tslog"
-pattern = "[.:\w\s]+ TrueSight: (\d+/\d+/\d+\s+\d+:\d+:\d+).*CIP: (.*) URL: (.*) UserAgent: (.*) Referrer: (.*) SIP: (.*) SP: (.*) Username: (.*)'"
+logfile = "/data/winxp"
+pattern = "(\w+\s*\d+\s*\d+:\d+:\d+)\s*plr01 pld: \[Ruleset:Notice\] FW: \[Log\s*([\w\.\s-]+)\s* Hosts\] \(6\)\s*(\d+.\d+.\d+.\d+):\d+->\d+.\d+.\d+.\d+:\d+\s*.*"
 
 
 def callback(filename, lines):
@@ -16,7 +16,7 @@ def callback(filename, lines):
     bulk_records = {}
     for line in lines:
         try:
-            db_name, coll_name, record = parse_ts(line, pattern)
+            db_name, coll_name, record = parse_procera(line, pattern)
             if record != {}:
                 indexname = db_name + ":" + coll_name
                 if indexname not in bulk_records:
@@ -24,11 +24,9 @@ def callback(filename, lines):
                 else:
                     bulk_records[indexname].append(record)
         except:
-            print parse_ts(line, pattern)
+            print parse_procera(line, pattern)
             raise
 
-    mongo_client.ensure_index([('time', 1), ('client_ip', 1)])
-    mongo_client.ensure_index([('eid', 1)])
     for index in bulk_records:
         db_name, coll_name = index.split(":")
         #print db_name, coll_name

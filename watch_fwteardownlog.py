@@ -1,13 +1,13 @@
 import re
-from log_parser import parse_ts
+from log_parser import parse_fwtreardown, is_fwteardown_log
 from log_watcher import LogWatcher
 from pymongo import MongoClient
 
 
-# Config info for truesight logger
+# Config info for fw built logger
 mongodb_url = "mongodb://localhost:27017"
-logfile = "/data/tslog"
-pattern = "[.:\w\s]+ TrueSight: (\d+/\d+/\d+\s+\d+:\d+:\d+).*CIP: (.*) URL: (.*) UserAgent: (.*) Referrer: (.*) SIP: (.*) SP: (.*) Username: (.*)'"
+logfile = "/data/firewall"
+pattern = "(\w+\s*\d+\s*\d\d:\d\d:\d\d).*?connection\s*(\d+)"
 
 
 def callback(filename, lines):
@@ -16,7 +16,9 @@ def callback(filename, lines):
     bulk_records = {}
     for line in lines:
         try:
-            db_name, coll_name, record = parse_ts(line, pattern)
+            if not is_fwteardown_log(line):
+                continue
+            db_name, coll_name, record = parse_fwteardown(line, pattern)
             if record != {}:
                 indexname = db_name + ":" + coll_name
                 if indexname not in bulk_records:
@@ -24,11 +26,8 @@ def callback(filename, lines):
                 else:
                     bulk_records[indexname].append(record)
         except:
-            print parse_ts(line, pattern)
+            print parse_fwteardown(line, pattern)
             raise
-
-    mongo_client.ensure_index([('time', 1), ('client_ip', 1)])
-    mongo_client.ensure_index([('eid', 1)])
     for index in bulk_records:
         db_name, coll_name = index.split(":")
         #print db_name, coll_name

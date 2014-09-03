@@ -1,22 +1,14 @@
 import re
-from plugin.log_parser import parse_dhcp
-from plugin.log_watcher import LogWatcher
-from conf_d import Configuration
+from log_parser import parse_dhcp
+from log_watcher import LogWatcher
 from pymongo import MongoClient
 
-conf = Configuration(
-    name = "dhcplog",
-    path = "./config/dhcplog.conf",
-    main_defaults = {
-        "mongodb_url" : "mongodb://localhost:27017",
-    }
-)
 
-config = conf.raw()
+# Config info for dhcp logger
+mongodb_url = "mongodb://localhost:27017",
+logfile = "/data/dhcplog/"
+pattern = "(\w+\s*\d+\s*\d+:\d+:\d+).*?DHCPACK on.*?(\d+.\d+.\d+.\d+)\s+to\s+([\w\d]+:[\w\d]+:[\w\d]+:[\w\d]+:[\w\d]+:[\w\d]+)\s+\(?([:.\w\d-]*)\)?\s*via.*"
 
-mongodb_url = config['dhcplog']['mongodb_url'].replace("\"", "")
-sections = config['sections']
-mongo_client = MongoClient(mongodb_url)
 
 def callback(filename, lines):
     global pattern
@@ -39,12 +31,13 @@ def callback(filename, lines):
         print db_name, coll_name
         #mongo_client[db_name][coll_name].insert(bulk_records[index])
 
+
 def process(logfile):
     global pattern
-    pattern = ''.join([x.replace("\"", "") for x in sections[logfile]['pattern'].split("\n")])
     pattern = re.compile(pattern)
     watcher = LogWatcher(logfile, callback)
     watcher.loop()
 
-for logfile in sections:
-    process(logfile)
+
+mongo_client = MongoClient(mongodb_url)
+process(logfile)

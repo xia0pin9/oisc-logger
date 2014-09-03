@@ -1,20 +1,13 @@
 import re
-from plugin.log_parser import parse_ids
-from plugin.log_watcher import LogWatcher
-from conf_d import Configuration
+from log_parser import parse_ids
+from log_watcher import LogWatcher
 from pymongo import MongoClient
 
-conf = Configuration(
-    name = "idslog",
-    path = "./config/idslog.conf",
-    main_defaults = {
-        "mongodb_url" : "mongodb://localhost:27017",
-    }
-).raw()
 
-mongodb_url = conf['idslog']['mongodb_url'].replace("\"", "")
-sections = conf['sections']
-mongo_client = MongoClient(mongodb_url)
+# Config info of ids-ua logger
+mongodb_url = "mongodb://localhost:27017" 
+logfile = "/data/ids-ua"
+
 
 def callback(filename, lines):
     global mongo_client
@@ -38,11 +31,8 @@ def callback(filename, lines):
         #mongo_client[db_name][coll_name].insert(bulk_records[index])
 
 def process(logfile):
-    #global pattern
-    #pattern = ''.join([x.replace("\"", "") for x in sections[logfile]['pattern'].split("\n")])
-    #pattern = re.compile(pattern)
     watcher = LogWatcher(logfile, callback)
     watcher.loop()
 
-for logfile in sections:
-    process(logfile)
+mongo_client = MongoClient(mongodb_url)
+process(logfile)

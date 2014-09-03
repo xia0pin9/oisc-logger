@@ -1,14 +1,13 @@
 import re
-from log_parser import parse_ts
+from log_parser import parse_fwbuilt, is_fwbuilt_log
 from log_watcher import LogWatcher
 from pymongo import MongoClient
 
 
-# Config info for truesight logger
+# Config info for fw built logger
 mongodb_url = "mongodb://localhost:27017"
-logfile = "/data/tslog"
-pattern = "[.:\w\s]+ TrueSight: (\d+/\d+/\d+\s+\d+:\d+:\d+).*CIP: (.*) URL: (.*) UserAgent: (.*) Referrer: (.*) SIP: (.*) SP: (.*) Username: (.*)'"
-
+logfile = "/data/firewall"
+pattern = "(\w+\s*\d+\s*\d+:\d+:\d+).*?outbound\s*(\w+)\s*connection\s*(\d+).*?outside:(\d+.\d+.\d+.\d+)/(\d+).*?inside:(\d+.\d+.\d+.\d+)/(\d+)\s*\((\d+.\d+.\d+.\d+)/(\d+)\)"
 
 def callback(filename, lines):
     global pattern
@@ -16,7 +15,9 @@ def callback(filename, lines):
     bulk_records = {}
     for line in lines:
         try:
-            db_name, coll_name, record = parse_ts(line, pattern)
+            if not is_fwbuilt_log(line):
+                continue
+            db_name, coll_name, record = parse_fwbuilt(line, pattern)
             if record != {}:
                 indexname = db_name + ":" + coll_name
                 if indexname not in bulk_records:
@@ -24,11 +25,8 @@ def callback(filename, lines):
                 else:
                     bulk_records[indexname].append(record)
         except:
-            print parse_ts(line, pattern)
+            print parse_fwbuilt(line, pattern)
             raise
-
-    mongo_client.ensure_index([('time', 1), ('client_ip', 1)])
-    mongo_client.ensure_index([('eid', 1)])
     for index in bulk_records:
         db_name, coll_name = index.split(":")
         #print db_name, coll_name
