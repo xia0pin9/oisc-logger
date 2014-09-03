@@ -1,5 +1,5 @@
 import re
-from log_parser import parse_fwtreardown, is_fwteardown_log
+from log_parser import parse_fwteardown, is_fwteardown_log
 from log_watcher import LogWatcher
 from pymongo import MongoClient
 
