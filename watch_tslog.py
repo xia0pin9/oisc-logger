@@ -47,15 +47,15 @@ def callback(filename, lines):
     for index in bulk_records_eid:
         db_name, coll_name = index.split(":")
         #print db_name, coll_name
-        #mongo_client[db_name][coll_name].insert(bulk_records_eid[index])
+        mongo_client[db_name][coll_name].insert(bulk_records_eid[index])
     for index in bulk_records_ua:
         db_name, coll_name = index.split(":")
         #print db_name, coll_name
-        #mongo_client[db_name][coll_name].insert(bulk_records_ua[index])
+        mongo_client[db_name][coll_name].insert(bulk_records_ua[index])
     for index in bulk_records_op:
         db_name, coll_name = index.split(":")
         #print db_name, coll_name
-        #mongo_client[db_name][coll_name].insert(bulk_records_op[index])
+        mongo_client[db_name][coll_name].insert(bulk_records_op[index])
 
 def process(logfile):
     global pattern

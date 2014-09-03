@@ -28,8 +28,8 @@ def callback(filename, lines):
             raise
     for index in bulk_records:
         db_name, coll_name = index.split(":")
-        print db_name, coll_name
-        #mongo_client[db_name][coll_name].insert(bulk_records[index])
+        #print db_name, coll_name
+        mongo_client[db_name][coll_name].insert(bulk_records[index])
 
 
 def process(logfile):

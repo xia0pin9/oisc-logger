@@ -27,8 +27,8 @@ def callback(filename, lines):
             #print "IdsParser error: ", line, matchline(line, pattern)
     for index in bulk_records:
         db_name, coll_name = index.split(":")
-        print db_name, coll_name
-        #mongo_client[db_name][coll_name].insert(bulk_records[index])
+        #print db_name, coll_name
+        mongo_client[db_name][coll_name].insert(bulk_records[index])
 
 def process(logfile):
     watcher = LogWatcher(logfile, callback)
