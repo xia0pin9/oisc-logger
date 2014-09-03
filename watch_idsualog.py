@@ -1,5 +1,5 @@
 import re
-from log_parser import parse_ids
+from log_parser import parse_ids_ua
 from log_watcher import LogWatcher
 from pymongo import MongoClient
 
@@ -14,7 +14,7 @@ def callback(filename, lines):
     bulk_records = {}
     for line in lines:
         try:
-            db_name, coll_name, record = parse_ids(line)
+            db_name, coll_name, record = parse_ids_ua(line)
             if record != {}:
                 indexname = db_name + ":" + coll_name
                 if indexname not in bulk_records:
@@ -22,7 +22,7 @@ def callback(filename, lines):
                 else:
                     bulk_records[indexname].append(record)
         except:
-            print parse_ids(line)
+            print parse_ids_ua(line)
             raise
             #print "IdsParser error: ", line, matchline(line, pattern)
     for index in bulk_records:

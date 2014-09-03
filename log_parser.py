@@ -355,7 +355,6 @@ def parse_ts_oldplatform(line, pattern):
             platform = get_old_platform(user_agent)
         except:
             print "Log error info:", line
-        print "Test ts get oldplatform", platform, client_ip
         if (platform is not None) and (is_home_network(client_ip)):
             tsDay = date.strftime("%Y_%m_%d")
             tsHour = date.strftime("%Y_%m_%d_%H")
