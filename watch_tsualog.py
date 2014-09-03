@@ -1,5 +1,5 @@
 import re
-from log_parser import parse_tsua
+from log_parser import parse_ts_ua
 from log_watcher import LogWatcher
 from pymongo import MongoClient
 
@@ -16,7 +16,7 @@ def callback(filename, lines):
     bulk_records = {}
     for line in lines:
         try:
-            db_name, coll_name, record = parse_tsua(line, pattern)
+            db_name, coll_name, record = parse_ts_ua(line, pattern)
             if record != {}:
                 indexname = db_name + ":" + coll_name
                 if indexname not in bulk_records:
@@ -24,11 +24,11 @@ def callback(filename, lines):
                 else:
                     bulk_records[indexname].append(record)
         except:
-            print parse_tsua(line, pattern)
+            print parse_ts_ua(line, pattern)
             raise
     for index in bulk_records:
         db_name, coll_name = index.split(":")
-        #print db_name, coll_name
+        print db_name, coll_name
         #mongo_client[db_name][coll_name].insert(bulk_records[index])
 
 def process(logfile):

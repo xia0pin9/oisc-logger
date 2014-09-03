@@ -1,6 +1,8 @@
 #!/usr/bin/evn python
 
 import re
+import struct
+import socket
 import traceback
 from dateutil import parser
 
@@ -8,12 +10,12 @@ mac_os_ua = {}
 win_os_ua = {}
 
 
-with open("plugin/mac_os_agents.txt") as f:
+with open("mac_os_agents.txt") as f:
     for line in f:
         cfn, os = line.strip().split(",")
         mac_os_ua[cfn] = os.strip()
 
-with open("plugin/win_os_agents.txt") as f:
+with open("win_os_agents.txt") as f:
     for line in f:
         nt, os = line.strip().split(",")
         win_os_ua[nt] = os.strip()
@@ -353,7 +355,7 @@ def parse_ts_oldplatform(line, pattern):
             platform = get_old_platform(user_agent)
         except:
             print "Log error info:", line
-            continue
+        print "Test ts get oldplatform", platform, client_ip
         if (platform is not None) and (is_home_network(client_ip)):
             tsDay = date.strftime("%Y_%m_%d")
             tsHour = date.strftime("%Y_%m_%d_%H")
