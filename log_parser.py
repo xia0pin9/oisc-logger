@@ -111,15 +111,15 @@ def parse_ids_ua(line):
     db_name = ''
     coll_name = ''
     record = {}
-    if len(line_split) < 6 or "snoopy UA-Strings" not in line:
-        return {}   # Ignore incomplete logs
+    if len(line_split) < 6 and "snoopy UA-Strings" not in line:
+        return db_name, coll_name, record
     try:
         ts, fwip, fwport, remote_ip, remote_port, us = line_split[:6]
         ts = parser.parse(ts.split("Strings:")[1].replace("/", "-"))
         platform = get_platform(us)
     except:
         print "Log line info:", line
-        raise
+        return db_name, coll_name, record 
     else:
         if platform != '':
             record['timestamp'] = ts
