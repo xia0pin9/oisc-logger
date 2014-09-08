@@ -112,14 +112,14 @@ def parse_ids_ua(line):
     coll_name = ''
     record = {}
     if len(line_split) < 6 or "snoopy UA-Strings" not in line:
-        return {}   # Ignore incomplete logs
+        return db_name, coll_name, record   # Ignore incomplete logs
     try:
         ts, fwip, fwport, remote_ip, remote_port, us = line_split[:6]
         ts = parser.parse(ts.split("Strings:")[1].replace("/", "-"))
         platform = get_platform(us)
     except:
         print "Log line info:", line
-        raise
+        return db_name, coll_name, record
     else:
         if platform != '':
             record['timestamp'] = ts
@@ -232,32 +232,36 @@ def parse_fwbuilt(line, pattern):
     coll_name = ''
     db_name = ''
     if matched:
-        timestamp = matched.group(1)
-        protocol = matched.group(2)
-        conn_id = matched.group(3)
-        remote_ip = matched.group(4)
-        remote_port = matched.group(5)
-        internal_ip = matched.group(6)
-        internal_port = matched.group(7)
-        external_ip = matched.group(8)
-        external_port = matched.group(9) 
-        
-        date = parser.parse(timestamp)
-        ts_day = date.strftime("%Y_%m_%d")
-        ts_hour = date.strftime("%Y_%m_%d_%H")
+        try:
+            timestamp = matched.group(1)
+            protocol = matched.group(2)
+            conn_id = matched.group(3)
+            remote_ip = matched.group(4)
+            remote_port = matched.group(5)
+            internal_ip = matched.group(6)
+            internal_port = matched.group(7)
+            external_ip = matched.group(8)
+            external_port = matched.group(9) 
+            date = parser.parse(timestamp)
+        except:
+            print "Log error line info:", line
+            return db_name, coll_name, record
+        else:
+            ts_day = date.strftime("%Y_%m_%d")
+            ts_hour = date.strftime("%Y_%m_%d_%H")
 
-        record['_id'] = int(conn_id)
-        record['firewall_ip'] = external_ip
-        record['firewall_port'] = external_port
-        record['internal_ip'] = internal_ip
-        record['internal_port'] = internal_port
-        record['remote_ip'] = remote_ip
-        record['remote_port'] = remote_port
-        record['protocol'] = protocol
-        record['start_time'] = date
+            record['_id'] = int(conn_id)
+            record['firewall_ip'] = external_ip
+            record['firewall_port'] = external_port
+            record['internal_ip'] = internal_ip
+            record['internal_port'] = internal_port
+            record['remote_ip'] = remote_ip
+            record['remote_port'] = remote_port
+            record['protocol'] = protocol
+            record['start_time'] = date
         
-        coll_name = 'nat_start_'+ts_hour
-        db_name = 'incident_response_nat_built_'+ts_day
+            coll_name = 'nat_start_'+ts_hour
+            db_name = 'incident_response_nat_built_'+ts_day
     return db_name, coll_name, record
 
 
@@ -274,17 +278,22 @@ def parse_fwteardown(line, pattern):
     db_name = ''
     coll_name = ''
     if matched:
-        timestamp = matched.group(1)
-        date = parser.parse(timestamp)
-        ts_day = date.strftime("%Y_%m_%d")
-        ts_hour = date.strftime("%Y_%m_%d_%H")
-        conn_id = matched.group(2)
-
-        record['_id'] = int(conn_id)
-        record['end_time'] = date
+        try:
+            timestamp = matched.group(1)
+            date = parser.parse(timestamp)
+            conn_id = matched.group(2)
+        except:
+            print "Log error line info:", line
+            return db_name, coll_name, record
+        else:
+            ts_day = date.strftime("%Y_%m_%d")
+            ts_hour = date.strftime("%Y_%m_%d_%H")
         
-        db_name = 'incident_response_nat_teardown_'+ts_day
-        coll_name = 'nat_end_'+ts_hour
+            record['_id'] = int(conn_id)
+            record['end_time'] = date
+        
+            db_name = 'incident_response_nat_teardown_'+ts_day
+            coll_name = 'nat_end_'+ts_hour
     return db_name, coll_name, record
 
                   
