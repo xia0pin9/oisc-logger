@@ -3,13 +3,12 @@
 import re
 import struct
 import socket
-import traceback
 from dateutil import parser
 
 mac_os_ua = {}
 win_os_ua = {}
 
-
+# Prepare user_agent to os_platform map for windows and mac
 with open("mac_os_agents.txt") as f:
     for line in f:
         cfn, os = line.strip().split(",")
@@ -21,6 +20,7 @@ with open("win_os_agents.txt") as f:
         win_os_ua[nt] = os.strip()
 
 
+# Get corresponding platform information from user agent string
 def get_platform(user_agent):
     osversion = ''
     if "CFNetwork" in user_agent:
@@ -105,41 +105,51 @@ def get_platform(user_agent):
         osversion = "Other" 
     return osversion
 
-
+# Parse IDS user agent logs
 def parse_ids_ua(line):
     line_split = line.rstrip().split(",")
-    db_name = ''
-    coll_name = ''
-    record = {}
+    dname_ids = ''
+    cname_ids = ''
+    record_ids = {}
+    dname_procera = ''
+    cname_procera = ''
+    record_procera = {}
     if len(line_split) < 6 or "snoopy UA-Strings" not in line:
-        return db_name, coll_name, record   # Ignore incomplete logs
+        return dname_ids, cname_ids, record_ids, dname_procera, cname_procera, record_procera
     try:
         ts, fwip, fwport, remote_ip, remote_port, us = line_split[:6]
         ts = parser.parse(ts.split("Strings:")[1].replace("/", "-"))
         platform = get_platform(us)
     except:
         print "Log line info:", line
-        return db_name, coll_name, record
+        return dname_ids, cname_ids, record_ids, dname_procera, cname_procera, record_procera 
     else:
         if platform != '':
-            record['timestamp'] = ts
-            record['firewall_ip'] = fwip
+            record_ids['timestamp'] = ts
+            record_ids['firewall_ip'] = fwip
             if fwport != '':
-                record['firewall_port'] = int(fwport)
+                record_ids['firewall_port'] = int(fwport)
             else:
-                record['firewall_port'] = ''
-            record['remote_ip'] = remote_ip
+                record_ids['firewall_port'] = ''
+            record_ids['remote_ip'] = remote_ip
             if remote_port != '':
-                record['remote_port'] = int(remote_port)
+                record_ids['remote_port'] = int(remote_port)
             else:
-                record['remote_port'] = ''
-            record['user_agent'] = us
-            record['os'] = platform
-            db_name = 'ids_ua_log_' + ts.strftime("%Y_%m_%d")
-            coll_name = 'idsua_' + ts.strftime("%Y_%m_%d_%H")
-    return db_name, coll_name, record
+                record_ids['remote_port'] = ''
+            record_ids['user_agent'] = us
+            record_ids['os'] = platform
+            dname_ids = 'ids_ua_log_' + ts.strftime("%Y_%m_%d")
+            cname_ids = 'idsua_' + ts.strftime("%Y_%m_%d_%H")
+            if "Windows XP" in platform:
+	        record_procera["timestamp"] = ts
+                record_procera["client_ip"] = fwip
+                record_procera["platform"] = platform
+ 		dname_procera = 'xp_hosts_procera_'+ts.strftime("%Y_%m_%d")
+                cname_procera = 'coll_'+ts.strftime("%Y_%m_%d_%H")
+                
+    return dname_ids, cname_ids, record_ids, dname_procera, cname_procera, record_procera
 
-
+# Public function, check whether a ip belongs to a specific net range
 def addressInNetwork(ip,net):
     '''Is an address in a network'''
     # Convert addresses to host order, so shifts actually make sense
@@ -152,6 +162,7 @@ def addressInNetwork(ip,net):
     return (ip & netmask) == netaddr
 
 
+# Check whether the ip address belongs to K-state managed range, which is our main interests
 def is_home_network(client_ip):
     home_nets = ['129.130.0.0/16', '10.130.0.0/16', '10.131.0.0/16']
     result = False
@@ -162,6 +173,7 @@ def is_home_network(client_ip):
     return result
 
 
+# Parse TrueSignt user agent logs
 def parse_ts_ua(line, pattern):
     matched = pattern.match(line)
     db_name = 'ts_ua_log_'
@@ -174,11 +186,11 @@ def parse_ts_ua(line, pattern):
             client_ip = matched.group(2)
             remote_ip = matched.group(6)
             remote_port = matched.group(7)
-            user_agent = matched.group(4)
+            user_agent = matched.group(4).decode('utf8', 'ignore')
             platform = get_platform(user_agent)
         except:
-            print "Parser error, line info:", line
-            traceback.print_exc(file=sys.stdout) 
+            print "Log error line info:", line
+            return db_name, coll_name, record
         else:
             if is_home_network(client_ip):
                 ts_day = date.strftime("%Y_%m_%d")
@@ -193,7 +205,7 @@ def parse_ts_ua(line, pattern):
                 coll_name = coll_name + ts_hour
     return db_name, coll_name, record
 
-
+# Parse DHCP logs
 def parse_dhcp(line, pattern):
     db_name = ''
     coll_name = ''
@@ -219,6 +231,7 @@ def parse_dhcp(line, pattern):
     return db_name, coll_name, record
 
 
+# Check whether the logs belongs to Firewall built logs
 def is_fwbuilt_log(line):
     if ('outbound UDP' in line) or ('outbound TCP' in line):
         return True
@@ -226,6 +239,7 @@ def is_fwbuilt_log(line):
         return False
 
 
+# Parse Firewall built logs
 def parse_fwbuilt(line, pattern):
     matched = pattern.match(line)
     record = {}
@@ -250,7 +264,7 @@ def parse_fwbuilt(line, pattern):
             ts_day = date.strftime("%Y_%m_%d")
             ts_hour = date.strftime("%Y_%m_%d_%H")
 
-            record['_id'] = int(conn_id)
+            record['conn_id'] = int(conn_id)
             record['firewall_ip'] = external_ip
             record['firewall_port'] = external_port
             record['internal_ip'] = internal_ip
@@ -265,6 +279,7 @@ def parse_fwbuilt(line, pattern):
     return db_name, coll_name, record
 
 
+# Check whether the logs belongs to Firewall teardown logs
 def is_fwteardown_log(line):
     if('Teardown TCP' in line) or ('Teardown UDP' in line):
         return True
@@ -272,6 +287,7 @@ def is_fwteardown_log(line):
         return False
 
 
+# Parse Firewall teardown logs
 def parse_fwteardown(line, pattern):
     matched = pattern.match(line)
     record = {}
@@ -289,14 +305,15 @@ def parse_fwteardown(line, pattern):
             ts_day = date.strftime("%Y_%m_%d")
             ts_hour = date.strftime("%Y_%m_%d_%H")
         
-            record['_id'] = int(conn_id)
+            record['conn_id'] = int(conn_id)
             record['end_time'] = date
         
             db_name = 'incident_response_nat_teardown_'+ts_day
             coll_name = 'nat_end_'+ts_hour
     return db_name, coll_name, record
 
-                  
+
+# Parse TrueSignt logs, extract eid information                  
 def parse_ts_eid(line, pattern):
     db_name = 'incident_response_eid_ip'
     coll_name = 'eid_ip'
@@ -314,30 +331,29 @@ def parse_ts_eid(line, pattern):
     return db_name, coll_name, record
 
 
+# Parse Procera logs
 def parse_procera(line, pattern):
     db_name = ''
     coll_name = ''
     record = {}
     matched = pattern.match(line)
     if matched:
-        timestamp =  matched.group(1)
-        platform = matched.group(2)
-        client_ip = matched.group(3)
-        timestamp = parser.parse(timestamp)
-        ts_day = timestamp.strftime("%Y_%m_%d")
-        ts_hour = timestamp.strftime("%Y_%m_%d_%H")
-         
-        record["timestamp"] = timestamp
-        record["client_ip"] = client_ip
-        record["platform"] = platform
-
-        coll_name = 'coll_'+ts_hour
-        db_name = 'xp_hosts_procera_'+ts_day
+        try:
+            timestamp =  matched.group(1)
+            platform = matched.group(2)
+            client_ip = matched.group(3)
+            timestamp = parser.parse(timestamp)
+        except:
+            print "Log error line info:", line
+            return db_name, coll_name, record
+        else:
+            ts_day = timestamp.strftime("%Y_%m_%d")
+            ts_hour = timestamp.strftime("%Y_%m_%d_%H")
     return db_name, coll_name, record
 
 
+# Old version of get OS platform info from user agent string by Sathya
 def get_old_platform(user_agent):
-
     if "Windows NT 5.1" in user_agent or "Windows NT 5.2" in user_agent or "Windows XP" in user_agent:
         return "Windows XP"
     elif "Intel Mac OS X 10.3" in user_agent or "Intel Mac OS X 10_3" in user_agent :
@@ -350,6 +366,7 @@ def get_old_platform(user_agent):
         return None
         
 
+# Parse TrueSignt logs with old version of map function, output to original database structure
 def parse_ts_oldplatform(line, pattern):
     matched = pattern.match(line)
     db_name = ''
@@ -363,13 +380,15 @@ def parse_ts_oldplatform(line, pattern):
             user_agent = matched.group(4)
             platform = get_old_platform(user_agent)
         except:
-            print "Log error info:", line
-        if (platform is not None) and (is_home_network(client_ip)):
-            tsDay = date.strftime("%Y_%m_%d")
-            tsHour = date.strftime("%Y_%m_%d_%H")
-            record["timestamp"] = date
-            record["client_ip"] = client_ip
-            record["platform"] = platform
-            db_name = 'xp_hosts_requests_db_'+tsDay
-            coll_name = 'coll_'+tsHour
+            print "Log error line info:", line
+            return db_name, coll_name, record
+        else:
+            if (platform is not None) and (is_home_network(client_ip)):
+                tsDay = date.strftime("%Y_%m_%d")
+                tsHour = date.strftime("%Y_%m_%d_%H")
+                record["timestamp"] = date
+                record["client_ip"] = client_ip
+                record["platform"] = platform
+                db_name = 'xp_hosts_requests_db_'+tsDay
+                coll_name = 'coll_'+tsHour
     return db_name, coll_name, record
