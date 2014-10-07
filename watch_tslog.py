@@ -1,6 +1,7 @@
 import re
 import sys
-import subprocess
+#import subprocess
+from sh import tail
 from log_parser import parse_ts_eid, parse_ts_ua, parse_ts_oldplatform
 from pymongo import MongoClient
 
@@ -12,16 +13,16 @@ pattern = "[.:\w\s]+ TrueSight: (\d+/\d+/\d+\s+\d+:\d+:\d+).*CIP: (.*) URL: (.*)
 
 
 mongo_client = MongoClient(mongodb_url)
-command = ['tail', '-F', logfile]
+#command = ['tail', '-F', logfile]
 pattern = re.compile(pattern)
-p = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
+#p = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
 bulk_records_eid = {}
 eid_count = 0
 bulk_records_ua = {}
 ua_count = 0
 bulk_records_op = {}
 op_count = 0
-for line in iter(p.stdout.readline, ''):
+for line in tail("-F", logfile, _iter=True): #iter(p.stdout.readline, ''):
     try:
         db_name_eid, coll_name_eid, record_eid = parse_ts_eid(line, pattern)
         db_name_ua, coll_name_ua, record_ua = parse_ts_ua(line, pattern)

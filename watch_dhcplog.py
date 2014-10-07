@@ -1,6 +1,7 @@
 import re
 import sys
-import subprocess
+#import subprocess
+from sh import tail
 from log_parser import parse_dhcp
 from pymongo import MongoClient
 
@@ -12,12 +13,12 @@ pattern = "(\w+\s*\d+\s*\d+:\d+:\d+).*?DHCPACK on.*?(\d+.\d+.\d+.\d+)\s+to\s+([\
 
 
 pattern = re.compile(pattern)
-command = ['tail', '-F', logfile]
-p = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
+#command = ['tail', '-F', logfile]
+#p = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
 mongo_client = MongoClient(mongodb_url)
 bulk_records = {}
 count = 0
-for line in iter(p.stdout.readline, ''):
+for line in tail("-F", logfile, _iter=True): #iter(p.stdout.readline, ''):
     try:
         db_name, coll_name, record = parse_dhcp(line, pattern)
         if record != {}:

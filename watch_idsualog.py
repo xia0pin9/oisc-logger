@@ -1,6 +1,7 @@
 import re
 import sys
-import subprocess
+#import subprocess
+from sh import tail
 from log_parser import parse_ids_ua
 from pymongo import MongoClient
 
@@ -12,13 +13,13 @@ sys.settrace
 
 
 mongo_client = MongoClient(mongodb_url)
-command = ['tail', '-F', logfile]
-p = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
+#command = ['tail', '-F', logfile]
+#p = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
 bulk_records_ids = {}
 ids_count = 0
 bulk_records_p = {}
 p_count = 0
-for line in iter(p.stdout.readline, ''):
+for line in tail("-F", logfile, _iter=True): #iter(p.stdout.readline, ''):
     try: 
         dname_ids, cname_ids, record_ids, dname_p, cname_p, record_p = parse_ids_ua(line)
         if record_ids != {}:
